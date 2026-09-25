@@ -1,0 +1,64 @@
+{
+  "report_name": "repaired",
+  "generated_at": "2026-09-25T10:07:58.723149+00:00",
+  "success": true,
+  "gx_success": true,
+  "total_rows": 24,
+  "expectations_total": 6,
+  "expectations_passed": 6,
+  "expectations_failed": 0,
+  "failures": [],
+  "expectation_results": [
+    {
+      "expectation": "expect_table_row_count_to_be_between",
+      "column": null,
+      "rule": "row_count",
+      "success": true
+    },
+    {
+      "expectation": "expect_column_values_to_not_be_null",
+      "column": "paper_id",
+      "rule": "paper_id_not_null",
+      "success": true
+    },
+    {
+      "expectation": "expect_column_values_to_be_unique",
+      "column": "paper_id",
+      "rule": "paper_id_unique",
+      "success": true
+    },
+    {
+      "expectation": "expect_column_values_to_not_be_null",
+      "column": "title",
+      "rule": "title_not_null",
+      "success": true
+    },
+    {
+      "expectation": "expect_column_values_to_not_be_null",
+      "column": "text_for_embedding",
+      "rule": "text_for_embedding_not_null",
+      "success": true
+    },
+    {
+      "expectation": "expect_column_value_lengths_to_be_between",
+      "column": "summary",
+      "rule": "summary_min_length",
+      "success": true
+    }
+  ],
+  "thresholds": {
+    "min_rows": 5,
+    "max_rows": 5000,
+    "min_summary_chars": 30,
+    "stale_age_days": 180,
+    "stale_ratio_limit": 0.25
+  },
+  "freshness": {
+    "latest_published": "2026-07-22",
+    "oldest_published": "2026-03-28",
+    "stale_rows": 1,
+    "total_rows": 24,
+    "stale_ratio": 0.0417,
+    "is_fresh": true
+  }
+}

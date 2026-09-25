@@ -1,0 +1,104 @@
+[
+  {
+    "id": "eval_001",
+    "type": "summary",
+    "question_type": "summary",
+    "question": "What is the summary of the paper 'Agentic Retrieval-Augmented Generation for Knowledge-Intensive Tasks'?",
+    "ground_truth": "Retrieval-Augmented Generation (RAG) significantly improves large language model accuracy by grounding responses in retrieved passages.",
+    "ground_truth_doc_ids": [
+      "10.1145/3637528.3671801"
+    ]
+  },
+  {
+    "id": "eval_002",
+    "type": "summary",
+    "question_type": "summary",
+    "question": "What is the summary of the paper 'Data Observability and Quality Gates for Production RAG Systems'?",
+    "ground_truth": "Silent data corruption in RAG pipelines degrades LLM answer faithfulness without throwing runtime errors.",
+    "ground_truth_doc_ids": [
+      "10.1145/3637528.3671802"
+    ]
+  },
+  {
+    "id": "eval_003",
+    "type": "authors",
+    "question_type": "authors",
+    "question": "Who authored the research on 'Multi-Agent Consensus for High-Stakes Fact Verification'?",
+    "ground_truth": "Phong Vu, Ngan Hoang",
+    "ground_truth_doc_ids": [
+      "10.1145/3637528.3671808"
+    ]
+  },
+  {
+    "id": "eval_004",
+    "type": "authors",
+    "question_type": "authors",
+    "question": "Who authored the research on 'Freshness SLAs for Real-Time LLM Knowledge Augmentation'?",
+    "ground_truth": "Bao Do, Linh Ngo",
+    "ground_truth_doc_ids": [
+      "10.1145/3637528.3671804"
+    ]
+  },
+  {
+    "id": "eval_005",
+    "type": "date",
+    "question_type": "date",
+    "question": "When was the paper 'Evaluating Retrieval Precision with Token F1 and LLM Judges' published?",
+    "ground_truth": "2026-03-28",
+    "ground_truth_doc_ids": [
+      "10.1145/3637528.3671805"
+    ]
+  },
+  {
+    "id": "eval_006",
+    "type": "date",
+    "question_type": "date",
+    "question": "When was the paper 'Synthetic Corruption Testing: Stress-Testing Vector Search Robustness' published?",
+    "ground_truth": "2026-06-25",
+    "ground_truth_doc_ids": [
+      "10.1145/3637528.3671807"
+    ]
+  },
+  {
+    "id": "eval_007",
+    "type": "category",
+    "question_type": "category",
+    "question": "What categories describe the paper 'Mitigating Ghost Vectors in Dense Retrieval via Idempotent Indexing'?",
+    "ground_truth": "Databases, Information Systems",
+    "ground_truth_doc_ids": [
+      "10.1145/3637528.3671803"
+    ]
+  },
+  {
+    "id": "eval_008",
+    "type": "category",
+    "question_type": "category",
+    "question": "What categories describe the paper 'Automated Data Quality Profiling with Great Expectations in CI/CD'?",
+    "ground_truth": "Data Quality, DevOps",
+    "ground_truth_doc_ids": [
+      "10.1145/3637528.3671810"
+    ]
+  },
+  {
+    "id": "eval_009",
+    "type": "multi_hop",
+    "question_type": "multi_hop",
+    "question": "How do 'Data Observability and Quality Gates for Production RAG Systems' and 'Automated Data Quality Profiling with Great Expectations in CI/CD' together address data quality and pipeline validation?",
+    "ground_truth": "Silent data corruption in RAG pipelines degrades LLM answer faithfulness without throwing runtime errors.",
+    "ground_truth_doc_ids": [
+      "10.1145/3637528.3671802",
+      "10.1145/3637528.3671810"
+    ]
+  },
+  {
+    "id": "eval_010",
+    "type": "multi_hop",
+    "question_type": "multi_hop",
+    "question": "How do 'Agentic Retrieval-Augmented Generation for Knowledge-Intensive Tasks' and 'Multi-Agent Consensus for High-Stakes Fact Verification' combine agentic reasoning with knowledge retrieval and verification?",
+    "ground_truth": "Retrieval-Augmented Generation (RAG) significantly improves large language model accuracy by grounding responses in retrieved passages.",
+    "ground_truth_doc_ids": [
+      "10.1145/3637528.3671801",
+      "10.1145/3637528.3671808"
+    ]
+  }
+]

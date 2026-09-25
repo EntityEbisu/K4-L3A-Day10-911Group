@@ -1,0 +1,95 @@
+{
+  "generated_at": "2026-09-25T10:01:35.426813+00:00",
+  "run_date": "2026-09-25",
+  "input_rows": 24,
+  "output_rows": 24,
+  "scenarios_total": 6,
+  "scenarios": [
+    {
+      "scenario": "drop_latest_records",
+      "description": "Bo roi 5 ban ghi moi nhat (20% du lieu tuoi).",
+      "affected_rows": 5,
+      "affected_paper_ids": [
+        "10.1145/3637528.3671812",
+        "10.1145/3637528.3671808",
+        "10.1145/3637528.3671804",
+        "10.1145/3637528.3671807",
+        "10.1145/3637528.3671802"
+      ]
+    },
+    {
+      "scenario": "blank_summary",
+      "description": "Xoa trang tom tat (mo phong thieu thong tin).",
+      "affected_rows": 3,
+      "affected_paper_ids": [
+        "10.1145/3637528.3671824",
+        "10.1145/3637528.3671823",
+        "10.1145/3637528.3671822"
+      ]
+    },
+    {
+      "scenario": "inject_text_noise",
+      "description": "Chen chuoi ky tu rac 'xzqv#@!!~##garbage-noise' vao tom tat/text embedding.",
+      "affected_rows": 3,
+      "affected_paper_ids": [
+        "10.1145/3637528.3671821",
+        "10.1145/3637528.3671810",
+        "10.1145/3637528.3671820"
+      ]
+    },
+    {
+      "scenario": "truncate_title",
+      "description": "Cat ngan tieu de xuong con 6 ky tu.",
+      "affected_rows": 3,
+      "affected_paper_ids": [
+        "10.1145/3637528.3671819",
+        "10.1145/3637528.3671818",
+        "10.1145/3637528.3671817"
+      ]
+    },
+    {
+      "scenario": "stale_date",
+      "description": "Lui ngay xuat ban ve 5 nam truoc (du lieu moc).",
+      "affected_rows": 6,
+      "affected_paper_ids": [
+        "10.1145/3637528.3671816",
+        "10.1145/3637528.3671815",
+        "10.1145/3637528.3671814",
+        "10.1145/3637528.3671813",
+        "10.1145/3637528.3671801",
+        "10.1145/3637528.3671811"
+      ],
+      "new_published": [
+        "2021-06-04",
+        "2021-06-03",
+        "2021-06-02",
+        "2021-06-01",
+        "2021-05-20",
+        "2021-05-14"
+      ],
+      "baseline_stale_rows": 1,
+      "total_stale_after_duplicates": 9
+    },
+    {
+      "scenario": "duplicate_rows",
+      "description": "Nhan ban 5 ban ghi de tao du lieu trung lap (bu lai phan da bi bo, giu row count khong doi).",
+      "affected_rows": 5,
+      "affected_paper_ids": [
+        "10.1145/3637528.3671811",
+        "10.1145/3637528.3671806",
+        "10.1145/3637528.3671809",
+        "10.1145/3637528.3671803",
+        "10.1145/3637528.3671805"
+      ]
+    }
+  ],
+  "summary": {
+    "unique_paper_ids_input": 24,
+    "unique_paper_ids_output": 19,
+    "duplicated_rows": 5,
+    "blank_summary_rows": 3,
+    "noisy_rows": 3,
+    "truncated_title_rows": 3,
+    "stale_rows": 9
+  }
+}
