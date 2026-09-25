@@ -10,49 +10,40 @@
 
 | STT | Họ và tên | MSSV | Email | Vai trò & Phân công công việc | Báo cáo cá nhân |
 |---:|---|---|---|---|---|
-| 1 | | | | Trưởng nhóm / Pipeline Integrator (`core/`, `phase1.py`, `corruption_flow.py`) | `report/<MSSV1>_HoTen.md` |
-| 2 | Dương Minh Hiếu | 2A202602488 | | Data Ingestion & Cleaning Owner (`crossref.py`, `cleaning.py`, raw data) | `report/2A202602488_DuongMinhHieu.md` |
-| 3 | | | | RAG & Vector Index (`retrieval/index.py`, `embeddings.py`, ChromaDB) | `report/<MSSV3>_HoTen.md` |
-| 4 | | | | Observability & Evaluation (`quality.py` GX 1.x, `testset.py`, reporting) | `report/<MSSV4>_HoTen.md` |
+| 1 | Nguyễn Trọng Minh | 2A202602496 | | Trưởng nhóm / Pipeline Integrator (`core/config.py`, `retrieval/embeddings.py`, `retrieval/llm.py`, `pipelines/phase1.py`, `pipelines/corruption_flow.py`, custom API wiring) | `report/2A202602496_NguyenTrongMinh.md` |
+| 2 | Dương Minh Hiếu | 2A202602488 | | Data Ingestion & Cleaning Owner (`crossref.py`, `cleaning.py`, raw data, freshness SLA) | `report/2A202602488_DuongMinhHieu.md` |
+| 3 | Lê Mạnh Cường | 2A202602604 | | RAG, Observability & Evaluation (`ingestion/corruption.py`, `quality.py` GX 1.x, `testset.py`, `reporting.py`, 6-way corruption, repair idempotency) | `report/2A202602604_LeManhCuong` |
 
-*(Nếu nhóm có 3 hoặc 5-6 thành viên, xem bảng phân công chi tiết theo vai trò trong file `CHECKPOINTS.md`)*.
+*(Nhóm 3 thành viên theo `report/README.md` nhóm 3: Minh tích hợp + custom API, Hiếu ingestion/cleaning, Cường corruption/quality/reporting)*.
 
 ---
 
 ## # Cá nhân
 
-### ## HoVaTen1-MSSV1
-- **Vai trò:** Trưởng nhóm & Điều phối Pipeline.
+### ## NguyễnTrọngMinh-2A202602496
+- **Vai trò:** Trưởng nhóm & Pipeline Integrator (custom API, orchestration).
 - **Công việc chi tiết đã hoàn thành:**
-  - Thiết lập cấu hình hệ thống `core/config.py` và đường dẫn artifacts `core/utils.py`.
-  - Kết nối luồng thực thi trong `src/pipelines/phase1.py` và `src/pipelines/corruption_flow.py`.
-  - Kiểm tra tính nhất quán của các artifacts và theo dõi Contributor tracking trên GitHub nhánh `main`.
+  - Thiết lập cấu hình hệ thống `core/config.py` (`LLM_PROVIDER=custom`, `EMBEDDING_MODEL=text-embedding-bge-m3`, `CUSTOM_LLM_BASE_URL=http://127.0.0.1:1234/v1`).
+  - Tích hợp `retrieval/embeddings.py` (CustomOpenAIEmbeddings qua POST /v1/embeddings, batch 32, 1024-dim bge-m3) và `retrieval/llm.py` (ternary-bonsai-8b).
+  - Quản lý `retrieval/index.py` (ChromaDB 3 collections, cosine, manifest custom-openai-compatible).
+  - Orchestrate `pipelines/phase1.py` (8 bước baseline) và `pipelines/corruption_flow.py` (corruption+repair+comparison).
 - **Điều học được / Đóng góp chính:**
-  - Hiểu sâu sắc về thiết kế Idempotent Pipeline và quản lý trạng thái luồng dữ liệu đa tầng.
+  - Thiết kế Idempotent Pipeline, wiring custom API qua environment, quản lý trạng thái 3-state luồng dữ liệu đa tầng.
 
-### ## DuongMinhHieu-2A202602488
-- **Vai trò:** Data Ingestion & Cleaning Owner.
+### ## DươngMinhHiếu-2A202602488
+- **Vai trò:** Data Ingestion & Cleaning Owner (raw preservation, quality gate).
 - **Công việc chi tiết đã hoàn thành:**
-  - Xây dựng module thu thập Crossref API với cơ chế Fallback offline trong `src/ingestion/crossref.py`.
-  - Chuẩn hóa schema, tính toán trường `age_days` và `text_for_embedding` trong `src/ingestion/cleaning.py`.
-  - Thiết lập Quality Gate Great Expectations 1.x và Freshness SLA trong `src/observability/quality.py`.
+  - Xây dựng module thu thập Crossref API dual-mode với fallback offline trong `src/ingestion/crossref.py`.
+  - Chuẩn hóa schema, tính toán `age_days` và `text_for_embedding` 5-field trong `src/ingestion/cleaning.py`.
+  - Thiết lập GX 1.x ephemeral context (6 expectations) + Freshness SLA (age_days>180, ratio≤0.25) trong `src/observability/quality.py`.
 - **Điều học được / Đóng góp chính:**
-  - Kỹ thuật truy vết nguồn gốc dữ liệu (Data Lineage), bảo toàn raw snapshot và cơ chế chốt kiểm dịch dữ liệu in-memory bằng GX 1.x.
+  - Data lineage & raw snapshot preservation, cơ chế chốt kiểm dịch in-memory GX 1.x, phát hiện Silent Failure.
 
-### ## HoVaTen3-MSSV3
-- **Vai trò:** Phụ trách RAG, Vector Database & Embedding.
+### ## LêMạnhCường-2A202602604
+- **Vai trò:** RAG, Observability & Evaluation (corruption, quality, repair validation).
 - **Công việc chi tiết đã hoàn thành:**
-  - Quản lý mô hình embedding `sentence-transformers/all-MiniLM-L6-v2`.
-  - Nạp và quản lý 3 collection riêng biệt trong ChromaDB (`papers-baseline`, `papers-corrupted`, `papers-repaired`).
-  - Xây dựng QA Agent truy vấn ngữ cảnh chính xác theo tài liệu.
+  - Triển khai 6 kịch bản corruption tính rời nhau (drop 5 / blank 3 / noise 3 / truncate 3 / stale 6 / duplicate 5) trong `src/ingestion/corruption.py`.
+  - Ghi log chi tiết + xây dựng `testset.py` (10 câu hỏi 4 loại Vietnamese round-robin) + reporting 3-state.
+  - Xác minh repair idempotent (load raw → build_clean → overwrite clean/repaired) via `corruption_flow.py`.
 - **Điều học được / Đóng góp chính:**
-  - Cách cô lập các không gian vector để so sánh khách quan giữa dữ liệu sạch và dữ liệu bị lỗi.
-
-### ## HoVaTen4-MSSV4
-- **Vai trò:** Phụ trách Data Observability & Benchmark Evaluation.
-- **Công việc chi tiết đã hoàn thành:**
-  - Thiết lập Quality Gate theo chuẩn mới **Great Expectations 1.x** và giám sát Freshness SLA trong `src/observability/quality.py`.
-  - Xây dựng bộ câu hỏi đánh giá chuẩn trong `src/evaluation/testset.py`.
-  - Đo lường và xuất bảng đối chiếu 3 trạng thái vào `data/reports/corruption_report.md`.
-- **Điều học được / Đóng góp chính:**
-  - Cách thiết lập hệ thống cảnh báo sớm chặn đứng hiện tượng Silent Failure trước khi dữ liệu vào serving layer.
+  - Disjointness của phép biến đổi, Silent Failure thầm lặng, tầng kiểm tra độc lập (row_count vs khóa duy nhất).
