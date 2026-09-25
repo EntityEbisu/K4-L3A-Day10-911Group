@@ -13,7 +13,7 @@ from retrieval.llm import build_llm
 def build_agent(settings: Settings, index: LocalEmbeddingIndex):
     @tool
     def semantic_search_papers(query: str, top_k: int = 4) -> str:
-        """Search the local paper corpus with embeddings and return the most relevant papers."""
+        """Tìm kiếm ngữ nghĩa trong kho bài báo đã lập chỉ mục và trả về các bài liên quan nhất."""
         results = index.search(query, top_k=top_k)
         lines = []
         for result in results:
@@ -23,14 +23,14 @@ def build_agent(settings: Settings, index: LocalEmbeddingIndex):
                 f"score: {result.score:.4f}\n"
                 f"{result.content}"
             )
-        return "\n\n".join(lines)
+        return "\n\n".join(lines) or "Không tìm thấy thông tin trong kho dữ liệu đã lập chỉ mục."
 
     @tool
     def lookup_paper(paper_id_or_title: str) -> str:
-        """Look up a paper by exact paper_id or exact title from the local corpus."""
+        """Tra cứu bài báo theo paper_id hoặc tiêu đề chính xác trong kho dữ liệu cục bộ."""
         record = index.lookup(paper_id_or_title)
         if not record:
-            return "No exact paper match found."
+            return "Không tìm thấy thông tin trong kho dữ liệu đã lập chỉ mục."
         return (
             f"paper_id: {record['paper_id']}\n"
             f"title: {record['title']}\n"
@@ -42,9 +42,11 @@ def build_agent(settings: Settings, index: LocalEmbeddingIndex):
         model=llm,
         tools=[semantic_search_papers, lookup_paper],
         system_prompt=(
-            "You answer questions about the indexed scholarly paper corpus sourced from Crossref. "
-            "Use tools before answering factual questions. "
-            "If the indexed corpus does not support the answer, say so clearly."
+            "Bạn trả lời bằng tiếng Việt về kho bài báo khoa học đã lập chỉ mục từ Crossref. "
+            "Luôn dùng công cụ trước khi trả lời câu hỏi mang tính sự kiện. "
+            "Chỉ trích dẫn sự thật lấy từ kết quả công cụ. "
+            "Nếu kho dữ liệu không đủ bằng chứng, hãy nói rõ: "
+            "'Không tìm thấy thông tin trong kho dữ liệu đã lập chỉ mục.'"
         ),
         name="paper_corpus_agent",
     )

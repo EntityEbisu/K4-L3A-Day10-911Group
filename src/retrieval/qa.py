@@ -20,12 +20,20 @@ class AnswerResult:
 def _extract_answer(question: str, top_result: SearchResult) -> str:
     lowered = question.lower()
     metadata = top_result.metadata
-    if "who authored" in lowered or "list the authors" in lowered:
+    if any(token in lowered for token in ("who authored", "list the authors", "tác giả", "tac gia")):
         return metadata["authors_joined"]
-    if "when was" in lowered or "publication date" in lowered or "published on" in lowered:
+    if any(
+        token in lowered
+        for token in ("when was", "publication date", "published on", "xuất bản", "xuat ban", "ngày công bố", "ngay cong bo")
+    ):
         return metadata["published"]
-    if "what categories" in lowered:
+    if any(
+        token in lowered
+        for token in ("what categories", "lĩnh vực", "linh vuc", "chuyên ngành", "chuyen nganh")
+    ):
         return metadata["categories_joined"]
+    if any(token in lowered for token in ("tóm tắt", "tom tat", "summary")):
+        return first_sentence(metadata["summary"])
     return first_sentence(metadata["summary"])
 
 
@@ -44,7 +52,7 @@ def answer_question(question: str, settings: Settings, index: LocalEmbeddingInde
         deduped = [exact_result] + [item for item in retrieved if item.paper_id != exact_result.paper_id]
         retrieved = deduped[: (top_k or settings.top_k)]
     if not retrieved:
-        answer = "I don't know from the indexed corpus."
+        answer = "Không tìm thấy thông tin trong kho dữ liệu đã lập chỉ mục."
     else:
         answer = _extract_answer(question, retrieved[0])
     return AnswerResult(
