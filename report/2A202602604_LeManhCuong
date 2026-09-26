@@ -1,0 +1,198 @@
+# Member Role Report — Day 10: Data Pipeline & Data Observability
+
+> Mỗi thành viên trong nhóm tự hoàn thành mẫu này để báo cáo đúng vai trò, phần việc và mức hiểu của mình. Không sao chép nguyên báo cáo chung hoặc báo cáo của thành viên khác.
+
+## 1. Thông tin cá nhân
+
+| Thông tin         | Nội dung                  |
+| ------------------ | -------------------------- |
+| Họ và tên       | Lê Mạnh Cường             |
+| MSSV               | 2A202602604                     |
+| Khóa/Lớp         | K4          |
+| Tên nhóm         | 911Group |
+| Vai trò chính    | Pipeline & Observability Engineer (Ingestion → Cleaning → Quality Gate → Corruption/Repair)                 |
+| Repository         | https://github.com/EntityEbisu/K4-L3A-Day10-911Group |
+| Ngày hoàn thành | 2026-09-25               |
+
+## 2. Vai trò và phạm vi công việc
+
+### Phần việc sở hữu
+
+| Module/deliverable | File/hàm phụ trách | Input nhận vào | Output bàn giao  | Trạng thái                                 |
+| ------------------ | --------------------- | ---------------- | ----------------- | -------------------------------------------- |
+| Thu thập dữ liệu dual-mode | `src/ingestion/crossref.py` — `parse_crossref_payload`, `fetch_source_records`, `load_raw_records` | Crossref REST API hoặc snapshot `data/raw/crossref_response.json` | `data/raw/crossref_response.json`, `data/raw/crossref_records.json` | Hoàn thành |
+| Làm sạch dữ liệu | `src/ingestion/cleaning.py` — `build_clean_dataframe`, `build_text_for_embedding` | 24 raw record + `run_date` | `data/clean/papers_clean.csv` / `.json` (24 dòng × 16 cột) | Hoàn thành |
+| Data Quality Gate (GX 1.x) | `src/observability/quality.py` — `run_data_quality_checks`, `build_freshness_report` | DataFrame đã làm sạch | `data/quality/baseline_quality_report.json`, `freshness_report.json` | Hoàn thành |
+| Sinh báo cáo markdown | `src/observability/reporting.py` — `generate_phase1_report`, `generate_corruption_report` | dict metrics / quality / freshness | `data/reports/phase1_report.md`, `data/reports/corruption_report.md` | Hoàn thành |
+| Orchestration Phase 1 | `src/pipelines/phase1.py` — `main`, `_load_records`, `_source_summary` | `settings` | 10 artifact của baseline | Hoàn thành |
+| Tiêm lỗi 6 kịch bản | `src/ingestion/corruption.py` — `corrupt_clean_dataframe` | DataFrame sạch | `data/results/corruption_log.json`, `papers_clean_corrupted.csv/.json` | Hoàn thành |
+| Luồng Corruption → Repair | `src/pipelines/corruption_flow.py` — `main`, `_repair_from_raw`, `_evaluate` | artifact baseline + raw snapshot | 12 artifact corrupted/repaired + `corruption_report.md` | Hoàn thành |
+| Cache evaluation set | `src/evaluation/testset.py` — `load_or_create_test_set`; `src/evaluation/__init__.py` | DataFrame sạch | `data/eval/test_set.json` (10 câu hỏi) | Hoàn thành |
+
+### Việc hỗ trợ ngoài phạm vi chính
+
+| Hoạt động                         | Thành viên/module được hỗ trợ | Kết quả                    |
+| ------------------------------------ | ------------------------------------ | ---------------------------- |
+| Gỡ lỗi `ImportError: cannot import name 'load_or_create_test_set'` | `src/evaluation/testset.py` | Xác định tên hàm thật trong repo là `build_test_set`; bổ sung thêm `load_or_create_test_set` + class `TestSet` để lệnh kiểm tra in ra `Test set gồm 10 câu hỏi` |
+| Gỡ lỗi `TypeError: LocalEmbeddingIndex.__init__() missing 2 required positional arguments` | `src/retrieval/index.py` | Chỉ ra constructor cần `(documents, persist_path)` và API thật là `.build(df, s)` / `.search(query, top_k)`; chạy lại in `Tìm thấy 2 tài liệu liên quan` |
+| Sửa lệch định dạng số trong báo cáo đối chiếu | `src/observability/reporting.py` | `mean_judge_score` in ra `5` thay vì `5.0000`; thêm `NUMERIC_METRICS` + `_fmt_metric` để ép 4 chữ số thập phân |
+
+## 3. Kết quả theo vai trò
+
+| Nhiệm vụ đã thực hiện | File/hàm/artifact liên quan | Kết quả bàn giao       | Cách xác minh         |
+| --------------------------- | ----------------------------- | ------------------------- | ----------------------- |
+| Bóc tách payload Crossref, chuẩn hóa DOI, loại thẻ JATS/HTML rác trong `summary` | `src/ingestion/crossref.py` | 24 bản ghi thô hợp lệ trong `data/raw/crossref_records.json` | So khớp byte-by-byte khi sinh lại file từ snapshot |
+| Cơ chế cứu hộ offline khi API trả 429 hoặc mất mạng | `fetch_source_records` | Pipeline không gián đoạn; vẫn ghi đủ 2 raw artifact | Ép `refresh_source=True` khi chặn mạng → pipeline tự lùi về snapshot |
+| Tính `age_days`, dựng `text_for_embedding` 5 dòng, khử trùng lặp theo `paper_id` | `src/ingestion/cleaning.py` | `data/clean/papers_clean.csv` — 24 dòng, 24 `paper_id` duy nhất | `data/quality/baseline_quality_report.json` → 6/6 expectation đạt |
+| Freshness SLA: stale = `age_days > 180`, ngưỡng 25% | `src/observability/quality.py` | `data/quality/freshness_report.json` — stale 1/24 (4.17%), `is_fresh=True` | Đối chiếu `oldest_published=2026-03-28` với `run_date` |
+| Tiêm 6 kịch bản lỗi và ghi log chi tiết | `src/ingestion/corruption.py` | `data/results/corruption_log.json` — đủ 6 kịch bản, `affected_rows` = 5/3/3/3/6/5 | `corruption_log.json` → `scenarios_total = 6` |
+| So sánh 3 trạng thái và sinh báo cáo đối chiếu | `src/pipelines/corruption_flow.py`, `src/observability/reporting.py` | `data/reports/corruption_report.md` | Bảng "Mức độ suy giam": Hit Rate −40.0%, Token F1 −22.1%, Judge Acc −11.1% |
+
+Output cụ thể mà phần việc của tôi tạo ra và trực tiếp xác minh: chuỗi artifact **baseline → corrupted → repaired** khép kín trong `data/reports/corruption_report.md`. Báo cáo chứng minh hiện tượng *Silent Failure*: sau khi tiêm lỗi, số dòng vẫn là 24 nhưng `unique_paper_ids` giảm 24 → 19, Quality Gate từ 6/6 xuống 4/6, Freshness từ `is_fresh=True` thành `False` (stale 1/24 → 9/24), và `retrieval_hit_rate` giảm 1.0000 → 0.6000 — tức agent vẫn trả lời trôi chảy nhưng dựa trên dữ liệu đã hỏng.
+
+## 4. Giải thích phần kỹ thuật đã thực hiện
+
+### Vấn đề cần giải quyết
+
+Pipeline RAG cần một nguồn dữ liệu ổn định và có thể tái lập, đồng thời phải **chứng minh được bằng số liệu** rằng dữ liệu bẩn làm suy giảm chất lượng câu trả lời, và việc phục hồi dữ liệu kéo chất lượng trở lại. Phần tôi làm trải từ khâu lấy dữ liệu (Crossref) → làm sạch → đặt trạm kiểm soát chất lượng → chủ động tiêm lỗi → phục hồi → báo cáo đối chiếu.
+
+### Cách triển khai
+
+**Ingestion (dual-mode).** `parse_crossref_payload` bóc từng item: `paper_id` lấy từ DOI đã chuẩn hóa (bỏ tiền tố `https://doi.org/`, hạ chữ thường), `title` gộp khoảng trắng, `summary` qua 2 lượt: gỡ thẻ XML/HTML bằng regex rồi `html.unescape` để giải mã thực thể, sau đó gộp khoảng trắng và xóa khoảng trắng thừa trước dấu câu. `published` chuẩn hóa về ISO 8601, chấp nhận cả `date-parts`, `date-time` và trường hợp chỉ có năm. Bản ghi thiếu DOI hoặc thiếu title bị loại. Cơ chế cứu hộ: `_request_payload` thử tối đa 3 lần với backoff lũy tiến cho các mã `429/500/502/503/504` (các mã 4xx khác không thử lại vì không có ý nghĩa); nếu vẫn thất bại hoặc mất mạng, `fetch_source_records` tự động đọc snapshot `data/raw/crossref_response.json`. Có thêm chế độ không chạm mạng khi `refresh_source=False` — đây là chế độ dùng cho mọi lần chạy lại để đảm bảo tái lập.
+
+**Cleaning.** `age_days = (run_date - published).days` tính bằng `datetime.date` (không dùng timestamp) để tránh lệch do giờ/phút. `text_for_embedding` được dựng đúng 5 dòng theo thứ tự `Title / Authors / Published / Categories / Summary` — thứ tự này quan trọng vì embedding nhạy với vị trí. Khử trùng lặp theo `paper_id` là khóa duy nhất, sắp xếp theo `published` giảm dần rồi `paper_id` tăng dần, nên kết quả có tính tất định.
+
+**Quality Gate.** Dùng API GX 1.x (`add_pandas` → `add_dataframe_asset` → `add_batch_definition_whole_dataframe` → `ValidationDefinition` → `Checkpoint.run(batch_parameters=...)`), không dùng `context.sources.pandas_default` đã bị bỏ. 6 expectation gồm 4 nhóm bắt buộc: số dòng trong [5, 5000], `paper_id`/`title`/`text_for_embedding` không null, `paper_id` duy nhất, `summary` dài tối thiểu 30 ký tự. Điểm tôi phải xử lý riêng: giá trị `NaN` của pandas tạo ra JSON **không hợp lệ**, nên tôi thêm `_json_safe()` chuyển `NaN → None` trước khi ghi report. Trạng thái cuối của gate là `gx_success AND is_fresh`, và tôi lưu `gx_success` riêng để phần so sánh 3 trạng thái vẫn đọc được nguyên nhân thất bại.
+
+**Corruption.** 6 kịch bản chạy trên 6 nhóm dòng **không giao nhau**: bỏ 5 bản ghi mới nhất (20%), làm trống `summary` 3 dòng, chèn nhiễu `xzqv#@!!~##garbage-noise` vào 3 dòng, cắt `title` còn 6 ký tự ở 3 dòng, đẩy ngày về 5 năm trước ở 6 dòng, và nhân bản 5 dòng. Ngưỡng cắt title tôi chọn 6 ký tự vì tài liệu yêu cầu "dưới 8" còn đề bài ghi "dưới 10" — 6 thỏa mãn cả hai. Số dòng nhân bản được lấy từ `tail()` (nhóm cũ nhất) để **bù lại** đúng số dòng đã bị bỏ ở kịch bản 1, nhờ vậy `output_rows` vẫn bằng `input_rows` = 24.
+
+**Repair.** `_repair_from_raw` đọc lại raw snapshot và chạy lại chính `build_clean_dataframe`. Vì làm sạch là hàm thuần túy của (raw records, `run_date`), repair có tính idempotent — chạy bao nhiêu lần cũng ra đúng một kết quả, không cần "sửa ngược" từng lỗi.
+
+### Input, output và contract
+
+| Thành phần                   | Mô tả                                     |
+| ------------------------------ | ------------------------------------------- |
+| Input                          | `settings` (đường dẫn artifact, `run_date`, `refresh_source`) + payload Crossref hoặc snapshot `data/raw/crossref_response.json` |
+| Output                         | `list[PaperRecord]` → DataFrame 16 cột: `paper_id, title, summary, authors, categories, primary_category, published, updated, abs_url, pdf_url, comment, authors_joined, categories_joined, summary_chars, age_days, text_for_embedding` |
+| Module phụ thuộc             | `core.config.load_settings`, `core.utils.write_text` |
+| Module sử dụng output        | `src/retrieval/index.py` (dùng `text_for_embedding` và `paper_id`), `src/evaluation/qa.py` (dùng `title`, `authors_joined`, `published`, `primary_category` để trích câu trả lời), `src/observability/quality.py` |
+| Điều kiện lỗi cần xử lý | API trả 429/quá tải hoặc mất mạng; item thiếu DOI/title; `summary` rỗng hoặc < 30 ký tự; `published` chỉ có năm; `published` ở tương lai; bản ghi trùng `paper_id` |
+
+### Cách xác minh
+
+```bash
+# 1. Chạy trọn Phase 1 (baseline) — dùng chế độ không chạm mạng
+python script/run_phase1.py
+
+# 2. Chạy luồng tiêm lỗi + phục hồi + báo cáo đối chiếu
+python script/run_corruption_flow.py
+
+# 3. Kiểm tra gate chất lượng và freshness của baseline
+python -c "import json;d=json.load(open('data/quality/baseline_quality_report.json',encoding='utf-8'));print(d['success'],d['expectations_passed'],'/',d['expectations_total'])"
+
+# 4. Kiểm tra báo cáo đối chiếu 3 trạng thái
+python -c "import json;print(json.load(open('data/results/repaired_metrics.json',encoding='utf-8'))['retrieval_hit_rate'])"
+```
+
+- **Kết quả mong đợi:** baseline gate `True 6/6`; sau tiêm lỗi gate `False 4/6` và `is_fresh=False`; sau phục hồi gate `True 6/6` và chỉ số trở lại mức baseline.
+- **Kết quả thực tế:** đúng như mong đợi. Baseline `True 6/6`, stale 1/24. Corrupted `False 4/6` (lỗi ở `paper_id_unique` và `summary_min_length`), stale 9/24 (37.5% > 25%). Repaired `True 6/6`, stale 1/24. `retrieval_hit_rate` baseline 1.0000 → corrupted 0.6000 → repaired 1.0000.
+- **Artifact/log:** `data/quality/*.json`, `data/results/*.json`, `data/reports/phase1_report.md`, `data/reports/corruption_report.md`. Không chứa secret.
+
+## 5. Một quyết định kỹ thuật quan trọng
+
+- **Bối cảnh:** Khi tiêm lỗi, kịch bản "bỏ bản ghi mới nhất" làm số dòng giảm, nên nếu để nguyên thì `row_count` sẽ tụt và Data Quality Gate sẽ báo lỗi *quá dễ* — chỉ cần nhìn số dòng là biết dữ liệu hỏng. Điều đó không tái hiện được loại lỗi nguy hiểm nhất trong thực tế: dữ liệu hỏng nhưng tổng số bản ghi vẫn "trông bình thường".
+- **Các phương án đã cân nhắc:**
+  1. Để số dòng giảm tự nhiên sau khi bỏ bản ghi (24 → 19). Gate sẽ bắt lỗi qua expectation `row_count`, nhưng lỗi bị phát hiện *hiển nhiên* và không đo được khả năng phát hiện lỗi tinh vi.
+  2. Bù lại số dòng bị bỏ bằng cách nhân bản thêm đúng số đó, lấy từ nhóm bản ghi cũ nhất (`tail()`), để giữ `output_rows = input_rows = 24`.
+- **Phương án đã chọn:** Phương án 2.
+- **Lý do:** Nó biến bài lab thành một phép thử đúng nghĩa về *Silent Failure*. Tổng số dòng không đổi (24 = 24) nên mọi cảnh báo dựa trên "số bản ghi" đều im lặng; chỉ những kiểm tra có ngữ nghĩa (tính duy nhất của `paper_id`, độ dài `summary`) mới phát hiện được. Chi phí là logic tiêm lỗi phức tạp hơn một chút và phải cẩn thận chọn nhóm dòng không giao nhau.
+- **Bằng chứng quyết định phù hợp:** `data/results/corruption_log.json` ghi `input_rows=24`, `output_rows=24`, nhưng `summary.unique_paper_ids_input=24` và `unique_paper_ids_output=19`. Quality Gate vì thế vẫn đạt 4/6 — tức 2 expectation dựa trên số lượng/số dòng (`row_count`) **không** phát hiện được gì, chỉ `paper_id_unique` và `summary_min_length` bắt được lỗi. Nếu chọn phương án 1, con số này sẽ không tồn tại.
+
+## 6. Một lỗi hoặc blocker đã xử lý
+
+- **Triệu chứng/lỗi nguyên văn:** `corruption_log.json` báo kịch bản `blank_summary` chỉ ảnh hưởng **3** dòng, nhưng khi đếm trực tiếp trên `papers_clean_corrupted.csv` thì có **6** dòng `summary` rỗng. Log và dữ liệu không khớp nhau — loại lỗi nguy hiểm vì báo cáo vẫn "trông đúng".
+- **Lệnh hoặc bước tái hiện:**
+  ```bash
+  python -c "import pandas as pd;d=pd.read_csv('data/clean/papers_clean_corrupted.csv');print(len(d[d.summary.fillna('').str.strip()=='']))"
+  # in ra 6, trong khi corruption_log.json ghi blank_summary affected_rows = 3
+  ```
+- **Nguyên nhân gốc:** Không phải lỗi ở bước ghi log, mà ở thứ tự chọn dòng. Kịch bản nhân bản lấy dòng từ `head()` — đúng những dòng mà các kịch bản trước (làm trống summary, chèn nhiễu, cắt title) vừa sửa. Kết quả là 6 kịch bản **chồng lấn** lên nhau: một dòng vừa bị làm trống summary, vừa được nhân bản, nên số dòng bị ảnh hưởng thật cao hơn con số log ghi. Log chỉ đếm số dòng mà kịch bản tự tay sửa, không đếm phần lan sang do nhân bản.
+- **Cách xử lý:** Đổi nguồn lấy dòng nhân bản từ `head()` sang `tail()` để 6 kịch bản tác động lên 6 nhóm dòng **không giao nhau**. Đồng thời ghi rõ trong log trường `summary.duplicated_rows` tách khỏi `blank_summary_rows`, và thêm `total_stale_after_duplicates` cho kịch bản `stale_date` (tra theo tên kịch bản thay vì theo chỉ số mảng `log[4]`, để log còn đúng nếu sau này đổi thứ tự kịch bản).
+- **Cách xác minh sau khi sửa:** Chạy lại `python script/run_corruption_flow.py`. Log hiện tại ghi `affected_rows` = `drop 5 / blank 3 / noise 3 / truncate 3 / stale 6 / duplicate 5`, và đếm trực tiếp trên CSV cho đúng các con số đó. Tổng số dòng vẫn là 24, `unique_paper_ids` = 19.
+- **Điều học được:** Khi có nhiều phép biến đổi chạy trên cùng một bảng, **tính rời nhau (disjointness) của các nhóm dòng là một bất biến phải kiểm tra**, không phải điều mặc định đúng. Và một log tự nó không chứng minh được gì — phải đối chiếu log với dữ liệu thật, vì log sai vẫn trông hoàn toàn hợp lý.
+
+## 7. Hiểu biết về luồng end-to-end
+
+**Câu trả lời:**
+
+1. **Dữ liệu đi từ Crossref đến vector index như thế nào?**
+   `fetch_source_records` gọi Crossref REST API (hoặc đọc snapshot offline khi API lỗi/mất mạng) và ghi lại 2 raw artifact để giữ nguyên vết dữ liệu gốc. `parse_crossref_payload` bóc payload thành `list[PaperRecord]` đã chuẩn hóa DOI/title/summary/ngày. `build_clean_dataframe` lọc bản ghi thiếu trường bắt buộc, tính `age_days`, dựng `text_for_embedding` 5 dòng và khử trùng lặp theo `paper_id`, ghi ra `papers_clean.csv/.json`. `LocalEmbeddingIndex.build` đọc cột `text_for_embedding`, mã hóa bằng `all-MiniLM-L6-v2` (vector đã chuẩn hóa), rồi nạp vào ChromaDB collection `papers-baseline` với `paper_id` làm id tài liệu. Từ đó `search(query, top_k)` truy hồi theo cosine similarity.
+
+2. **Evaluation set và ground-truth document IDs dùng để đo retrieval/answer quality ra sao?**
+   `build_test_set` sinh 10 câu hỏi từ chính dữ liệu sạch (2 câu summary, 2 authors, 2 date, 2 category, 2 multi-hop), mỗi câu lưu `ground_truth` và `ground_truth_doc_ids` — tức đáp án đúng *và* id tài liệu chứa đáp án đó. Khi đánh giá, hệ thống truy hồi top-k cho từng câu: `retrieval_hit_rate` đo xem tài liệu đúng có nằm trong top-k không (chất lượng truy hồi), còn `mean_token_f1` và điểm của LLM judge đo chất lượng câu trả lời sinh ra so với `ground_truth` (chất lượng trả lời). Hai nhóm chỉ số tách biệt nên phân biệt được "truy hồi sai" với "truy hồi đúng nhưng trả lời dở".
+
+3. **Quality checks khác freshness monitoring ở điểm nào trong bài lab?**
+   Quality checks kiểm tra tính **toàn vẹn cấu trúc và ngữ nghĩa** của dữ liệu tại thời điểm chạy: đủ số dòng, không null, khóa duy nhất, `summary` đủ dài — những thứ đúng/sai ngay lập tức. Freshness monitoring kiểm tra **chiều thời gian**: `age_days > 180` bị coi là quá hạn, và chỉ cảnh báo khi tỉ lệ vượt 25%. Khác biệt then chốt: dữ liệu hoàn toàn có thể sạch về cấu trúc mà vẫn mốc (24 dòng, không null, khóa duy nhất, nhưng toàn bộ đều cũ), và ngược lại. Vì vậy trạng thái cuối của gate là `gx_success AND is_fresh` — thiếu một trong hai thì không đạt.
+
+4. **Vì sao phải dùng cùng test set cho baseline, corrupted và repaired?**
+   Vì test set là **biến kiểm soát** của thí nghiệm. Nếu mỗi trạng thái dùng một bộ câu hỏi khác nhau thì chênh lệch chỉ số có thể do câu hỏi dễ/khó khác nhau chứ không phải do dữ liệu. Giữ nguyên 10 câu hỏi và cùng ground truth giúp mọi thay đổi về chỉ số quy được về đúng một nguyên nhân là chất lượng dữ liệu. Đây cũng là lý do tôi thêm `load_or_create_test_set` có tham số `refresh`: mặc định đọc lại cache `data/eval/test_set.json` thay vì sinh mới, để tránh vô tình đổi đề giữa các lần chạy.
+
+5. **Repair được xem là thành công dựa trên artifact và metric nào?**
+   Dựa trên ba lớp bằng chứng cùng lúc. Thứ nhất, artifact: `papers_clean_repaired.csv/.json` phải trùng khớp **từng ô** với `papers_clean.csv` gốc khi sắp xếp theo `paper_id` — đây là bằng chứng mạnh nhất vì repair đọc lại raw snapshot và chạy lại hàm làm sạch thuần túy. Thứ hai, quality/freshness: `repaired_quality_report.json` đạt 6/6 và `is_fresh=True` (stale 1/24), tức cả hai vế của gate đều xanh. Thứ ba, metric: các chỉ số RAG phải trở về mức baseline — `retrieval_hit_rate` 0.6000 → 1.0000, `mean_token_f1` 0.7788 → 1.0000. Chỉ khi cả ba lớp cùng đạt thì mới kết luận repair thành công.
+
+## 8. Phân tích kết quả
+
+### Metrics chính
+
+| Metric/signal          | Baseline | Corrupted | Repaired | Nhận xét của cá nhân |
+| ---------------------- | -------: | --------: | -------: | ------------------------- |
+| `retrieval_hit_rate` |   1.0000 |    0.6000 |   1.0000 | Giảm 40% rồi phục hồi hoàn toàn. Đây là chỉ số nhạy nhất với tiêm lỗi. |
+| `mean_token_f1`      |   1.0000 |    0.7788 |   1.0000 | Giảm 22.1%. Mức giảm nhỏ hơn hit rate vì một phần câu trả lời vẫn đúng nhờ các trường metadata chưa bị sửa. |
+| `judge_accuracy`     |   0.9000 |    0.8000 |   1.0000 | Giảm 11.1%, tương ứng đúng 1 trong 10 câu đổi kết quả. Vì chỉ chênh 1 câu và đây là điểm do LLM chấm, biên độ này nằm trong mức nhiễu — không nên đọc như tín hiệu chắc chắn. |
+| `mean_judge_score`   |   4.6000 |    4.0000 |   5.0000 | Cùng xu hướng với `judge_accuracy`; thang điểm 1–5 nên độ phân giải thấp. |
+| Quality checks         |      6/6 |       4/6 |      6/6 | Corrupted hỏng đúng 2 expectation có ngữ nghĩa: `paper_id_unique` và `summary_min_length`. `row_count` **không** phát hiện được gì. |
+| Freshness status       | stale 1/24, `is_fresh=True` | stale 9/24 (37.5%), `is_fresh=False` | stale 1/24, `is_fresh=True` | Vượt ngưỡng 25% nên SLA kích hoạt. Đây là vế thứ hai của gate, độc lập với GX. |
+
+### Kết luận từ số liệu
+
+1. **[Data corruption: bỏ 5 bản ghi mới nhất + nhân bản 5 dòng + đẩy 6 dòng về 5 năm trước]** → **[Quality Gate 6/6 → 4/6; `unique_paper_ids` 24 → 19; stale 1/24 → 9/24, `is_fresh` True → False]** → **[`retrieval_hit_rate` 1.0000 → 0.6000; `mean_token_f1` 1.0000 → 0.7788; `judge_accuracy` 0.9000 → 0.8000]**. Chuỗi này cho thấy tín hiệu quan sát được ở tầng dữ liệu (mất tính duy nhất khóa, dữ liệu quá hạn) đi trước và dự báo được suy giảm ở tầng agent.
+
+2. **[Repair: đọc lại raw snapshot và chạy lại `build_clean_dataframe` (idempotent)]** → **[Quality Gate 4/6 → 6/6; stale 9/24 → 1/24, `is_fresh` False → True]** → **[`retrieval_hit_rate` 0.6000 → 1.0000; `mean_token_f1` 0.7788 → 1.0000; `judge_accuracy` 0.8000 → 1.0000]**. Phục hồi hoàn toàn và vượt baseline ở `judge_accuracy`. Chỉ số sau repair bằng đúng baseline vì dữ liệu repaired trùng khớp từng ô với dữ liệu sạch — chênh lệch +11.1% ở `judge_accuracy` là do LLM judge dao động, không phải do repair tốt hơn dữ liệu gốc.
+
+**Corruption nào ảnh hưởng rõ nhất và vì sao?**
+
+Nhóm **bỏ bản ghi mới nhất kết hợp nhân bản** ảnh hưởng rõ nhất, vì nó tác động đồng thời lên cả truy hồi lẫn chất lượng khóa. Khi 5 bản ghi mới nhất bị bỏ, các câu hỏi có ground truth trỏ vào chúng mất tài liệu đích khỏi index, nên `retrieval_hit_rate` rơi từ 1.0000 xuống 0.6000 — đúng 4 trong 10 câu mất hit, tương ứng số câu hỏi gắn với nhóm bản ghi bị bỏ. Đồng thời việc nhân bản làm `paper_id` mất tính duy nhất (24 → 19), khiến index chứa nhiều vector trùng nội dung và chiếm chỗ trong top-k, làm giảm thêm chất lượng ngữ cảnh đưa vào LLM. Kịch bản `stale_date` **không** ảnh hưởng đến chỉ số RAG trong thí nghiệm này — nó bị phát hiện bởi freshness SLA chứ không bởi hit rate, đúng như thiết kế hai tầng kiểm tra độc lập.
+
+**Kết quả nào khác với kỳ vọng ban đầu?**
+
+Kỳ vọng ban đầu: sau tiêm lỗi, Data Quality Gate phải báo ít nhất một lỗi liên quan đến **số dòng**. Thực tế: expectation `row_count` đạt, vì `input_rows = output_rows = 24`. Giả thuyết ban đầu của tôi là "dữ liệu hỏng thì số dòng phải đổi" — giả thuyết này sai, và chính chỗ sai đó tạo ra bài học về Silent Failure. Tôi đã kiểm tra bằng cách đối chiếu `corruption_log.json` với `corrupted_quality_report.json`: chỉ `paper_id_unique` (unexpected = 10, tức 5 cặp trùng, mỗi cặp bị GX đánh dấu cả 2 dòng) và `summary_min_length` (unexpected = 3) thất bại. **Đây là bằng chứng cốt lõi của bài lab: một chỉ số tổng hợp như số dòng hoàn toàn không đủ để phát hiện lỗi dữ liệu.**
+
+**Một lưu ý trung thực về các chỉ số bằng 1.0000.** `retrieval_hit_rate` và `mean_token_f1` đạt 1.0000 ở baseline và repaired. Tôi kiểm tra và thấy nguyên nhân một phần nằm ở **thiết kế phép đo**, không chỉ ở chất lượng hệ thống: với các câu hỏi thuộc nhóm authors/date/category, `qa.py::_extract_answer` trích câu trả lời trực tiếp từ trường metadata mà `testset.py` cũng dùng để tạo ground truth, nên hệ thống đang so một trường với chính nó. Vì vậy **không nên đọc 1.0000 là "độ chính xác 100%"**. Điều này cũng giải thích vì sao `judge_accuracy` chỉ 0.9000 ngay ở baseline: các câu `multi_hop` có ground truth chỉ là câu đầu tiên của một bài báo, và LLM judge đánh giá đúng là chúng chưa giải thích được sự kết hợp giữa nhiều tài liệu.
+
+## 9. Điều học được và hướng cải thiện
+
+### Ba điều quan trọng nhất
+
+1. **Data pipeline chỉ đáng tin khi có thể tái lập.** Việc tách raw snapshot khỏi bước làm sạch mang lại hai lợi ích cùng lúc: chạy offline khi mạng hỏng, và làm phép sửa lỗi trở nên idempotent vì `build_clean_dataframe` là hàm thuần túy của (raw records, `run_date`). Nhờ đó "repair" không cần logic riêng để đảo ngược từng loại lỗi — chỉ cần chạy lại từ nguồn.
+
+2. **Data quality/observability phải kiểm tra nhiều tầng độc lập.** Số dòng, tính duy nhất, độ dài trường và độ tươi là bốn loại tín hiệu khác nhau, không thay thế được cho nhau. Trong thí nghiệm này `row_count` đạt trong khi dữ liệu đã hỏng nặng — nếu chỉ có một tầng kiểm tra thì toàn bộ sự cố đã đi qua mà không ai biết.
+
+3. **Dữ liệu bẩn làm agent trả lời sai một cách trôi chảy.** Agent không hề báo lỗi khi `retrieval_hit_rate` rơi xuống 0.6000; nó vẫn sinh câu trả lời từ ngữ cảnh sai. Nghĩa là không thể phát hiện vấn đề bằng cách đọc output của agent — phải đo ở tầng dữ liệu và tầng truy hồi, trước khi đến người dùng.
+
+### Nếu có thêm thời gian
+
+Tôi sẽ **tách phép đo khỏi chính ground truth** để loại bỏ hiện tượng "so trường với chính nó" đang đẩy `retrieval_hit_rate` và `mean_token_f1` lên 1.0000 một cách giả tạo. Cách làm: với nhóm authors/date/category, thay vì để `qa.py` trích thẳng từ metadata, tôi sẽ chuyển sang hỏi theo dạng cần tổng hợp từ `text_for_embedding` (ví dụ "bài báo X được viết bởi ai và thuộc lĩnh vực nào") để câu trả lời phải đi qua truy hồi ngữ nghĩa thật. Cách đo cải thiện: hai chỉ số này được kỳ vọng sẽ **giảm xuống dưới 1.0000 ở baseline** — đó là dấu hiệu phép đo đã trung thực hơn, chứ không phải dấu hiệu hệ thống tệ đi. Kèm theo đó tôi sẽ thay ground truth của nhóm `multi_hop` bằng đáp án tổng hợp thật từ 2–3 tài liệu để `judge_accuracy` ổn định và phản ánh đúng năng lực suy luận nhiều bước.
+
+## 10. Cam kết của thành viên
+
+Đánh dấu sau khi tự kiểm tra:
+
+- [x] Nội dung báo cáo phản ánh đúng phần việc và mức hiểu của tôi.
+- [x] Tôi có thể giải thích luồng end-to-end, không chỉ module mình phụ trách.
+- [x] Mọi kết luận về kết quả đều có artifact hoặc metric để đối chiếu.
+- [x] Tôi không ghi “đã chạy thành công” cho phần chưa được kiểm chứng.
+- [x] Báo cáo không chứa `.env`, API key, token hoặc secret.
+- [x] Báo cáo này không phải bản sao nguyên văn của báo cáo nhóm hoặc báo cáo thành viên khác.
+
+**Họ và tên:** Lê Mạnh Cường
+**Ngày xác nhận:** 2026-09-25
